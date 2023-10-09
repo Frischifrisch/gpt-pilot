@@ -83,7 +83,7 @@ class AgentConvo:
 
         # TODO handle errors from OpenAI
         if response == {}:
-            logger.error(f'Aborting with "OpenAI API error happened"')
+            logger.error('Aborting with "OpenAI API error happened"')
             raise Exception("OpenAI API error happened.")
 
         response = parse_agent_response(response, function_calls)
@@ -95,11 +95,11 @@ class AgentConvo:
                 string_response = function_calls['to_message'](message_content)
             elif len(message_content) > 0 and isinstance(message_content[0], dict):
                 string_response = [
-                    f'#{i}\n' + array_of_objects_to_string(d)
+                    f'#{i}\n{array_of_objects_to_string(d)}'
                     for i, d in enumerate(message_content)
                 ]
             else:
-                string_response = ['- ' + r for r in message_content]
+                string_response = [f'- {r}' for r in message_content]
 
             message_content = '\n'.join(string_response)
         # TODO END
@@ -172,10 +172,7 @@ class AgentConvo:
 
         updated_message, num_replacements = re.subn(pattern, new_section_content, message, flags=re.DOTALL)
 
-        if num_replacements == 0:
-            return message
-
-        return updated_message
+        return message if num_replacements == 0 else updated_message
 
     def convo_length(self):
         return len([msg for msg in self.messages if msg['role'] != 'system'])

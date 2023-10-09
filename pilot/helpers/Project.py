@@ -144,10 +144,12 @@ class Project:
             dict: The directory tree.
         """
         files = {}
-        if with_descriptions and False:
-            files = File.select().where(File.app_id == self.args['app_id'])
-            files = {snapshot.name: snapshot for snapshot in files}
-        return build_directory_tree(self.root_path + '/', ignore=IGNORE_FOLDERS, files=files, add_descriptions=False)
+        return build_directory_tree(
+            f'{self.root_path}/',
+            ignore=IGNORE_FOLDERS,
+            files=files,
+            add_descriptions=False,
+        )
 
     def get_test_directory_tree(self):
         """
@@ -157,7 +159,7 @@ class Project:
             dict: The directory tree of tests.
         """
         # TODO remove hardcoded path
-        return build_directory_tree(self.root_path + '/tests', ignore=IGNORE_FOLDERS)
+        return build_directory_tree(f'{self.root_path}/tests', ignore=IGNORE_FOLDERS)
 
     def get_all_coded_files(self):
         """
@@ -172,7 +174,7 @@ class Project:
         files = [file for file in files if len(FileSnapshot.select().where(FileSnapshot.file_id == file.id)) > 0]
         # TODO END
 
-        files = self.get_files([file.path + '/' + file.name for file in files])
+        files = self.get_files([f'{file.path}/{file.name}' for file in files])
 
         # TODO temoprary fix to eliminate files that are not in the project
         files = [file for file in files if file['content'] != '']
@@ -257,9 +259,9 @@ class Project:
             file_name += '/'
 
         if '/' in file_path and not file_path.startswith('/'):
-            file_path = '/' + file_path
+            file_path = f'/{file_path}'
         if '/' in file_name and not file_name.startswith('/'):
-            file_name = '/' + file_name
+            file_name = f'/{file_name}'
         # END Universal modifications
 
         head_path, tail_path = os.path.split(file_path)
@@ -271,7 +273,7 @@ class Project:
         if head_path in head_name:
             final_file_path = head_name
         elif final_file_path != head_name:
-            if head_name not in head_path and head_path not in head_name:
+            if head_name not in head_path:
                 if '.' in file_path:
                     final_file_path = head_name + head_path
                 else:

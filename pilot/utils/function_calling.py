@@ -71,11 +71,7 @@ def parse_agent_response(response, function_calls: Union[FunctionCallSet, None])
     if function_calls:
         text = response['text']
         values = list(json.loads(text).values())
-        if len(values) == 1:
-            return values[0]
-        else:
-            return tuple(values)
-
+        return values[0] if len(values) == 1 else tuple(values)
     return response['text']
 
 

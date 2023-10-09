@@ -30,9 +30,9 @@ def num_tokens_from_functions(functions):
 
     num_tokens = 0
     for function in functions:
-        function_tokens = len(encoding.encode(function['name']))
-        function_tokens += len(encoding.encode(function['description']))
-
+        function_tokens = len(encoding.encode(function['name'])) + len(
+            encoding.encode(function['description'])
+        )
         if 'parameters' in function:
             parameters = function['parameters']
             if 'properties' in parameters:
@@ -40,10 +40,7 @@ def num_tokens_from_functions(functions):
                     function_tokens += len(encoding.encode(propertiesKey))
                     v = parameters['properties'][propertiesKey]
                     for field in v:
-                        if field == 'type':
-                            function_tokens += 2
-                            function_tokens += len(encoding.encode(v['type']))
-                        elif field == 'description':
+                        if field == 'description':
                             function_tokens += 2
                             function_tokens += len(encoding.encode(v['description']))
                         elif field == 'enum':
@@ -51,6 +48,9 @@ def num_tokens_from_functions(functions):
                             for o in v['enum']:
                                 function_tokens += 3
                                 function_tokens += len(encoding.encode(o))
+                        elif field == 'type':
+                            function_tokens += 2
+                            function_tokens += len(encoding.encode(v['type']))
                 function_tokens += 11
 
         num_tokens += function_tokens
@@ -100,8 +100,7 @@ def create_gpt_chat_completion(messages: List[dict], req_type, project,
     add_function_calls_to_request(gpt_data, function_calls)
 
     try:
-        response = stream_gpt_completion(gpt_data, req_type, project)
-        return response
+        return stream_gpt_completion(gpt_data, req_type, project)
     except TokenLimitError as e:
         raise e
     except Exception as e:
@@ -120,8 +119,7 @@ def delete_last_n_lines(n):
 
 
 def count_lines_based_on_width(content, width):
-    lines_required = sum(len(line) // width + 1 for line in content.split('\n'))
-    return lines_required
+    return sum(len(line) // width + 1 for line in content.split('\n'))
 
 
 def get_tokens_in_messages_from_openai_error(error_message):
@@ -135,9 +133,9 @@ def get_tokens_in_messages_from_openai_error(error_message):
     int or None: The token count if found, otherwise None.
     """
 
-    match = re.search(r"your messages resulted in (\d+) tokens", error_message)
-
-    if match:
+    if match := re.search(
+        r"your messages resulted in (\d+) tokens", error_message
+    ):
         return int(match.group(1))
     else:
         return None
@@ -217,7 +215,7 @@ def retry_on_exception(func):
                         time.sleep(wait_duration)
                     continue
 
-                print(red(f'There was a problem with request to openai API:'))
+                print(red('There was a problem with request to openai API:'))
                 # spinner_stop(spinner)
                 print(err_str)
                 logger.error(f'There was a problem with request to openai API: {err_str}')
