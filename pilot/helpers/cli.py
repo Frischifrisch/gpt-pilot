@@ -135,27 +135,20 @@ def execute_command(project, command, timeout=None, process_name: str = None, fo
     if not force:
         print(yellow_bold(f'\n--------- EXECUTE COMMAND ----------'))
         question = f'Can I execute the command: `{yellow_bold(command)}`'
-        if timeout is not None:
-            question += f' with {timeout}ms timeout?'
-        else:
-            question += '?'
-
+        question += f' with {timeout}ms timeout?' if timeout is not None else '?'
         answer = ask_user(project, question, False, hint='If yes, just press ENTER')
 
         # TODO: I think AutoGPT allows other feedback here, like:
         #       "That's not going to work, let's do X instead"
         #       We don't explicitly make "no" or "skip" options to the user
         #       see https://github.com/Pythagora-io/gpt-pilot/issues/122
-        print('answer: ' + answer)
-        if answer == 'no':
+        print(f'answer: {answer}')
+        if answer in ['no', 'skip']:
             return '', 'DONE', None
-        elif answer == 'skip':
-            return '', 'DONE', None
-
     # TODO when a shell built-in commands (like cd or source) is executed, the output is not captured properly - this will need to be changed at some point
     # TODO: Windows support
     if "cd " in command or "source " in command:
-        command = "bash -c '" + command + "'"
+        command = f"bash -c '{command}'"
 
     project.command_runs_count += 1
     command_run = get_saved_command_run(project, command)
@@ -201,7 +194,7 @@ def execute_command(project, command, timeout=None, process_name: str = None, fo
                     output_line = q.get_nowait()
                     if output_line not in output:
                         print(green('CLI OUTPUT:') + output_line, end='')
-                        logger.info('CLI OUTPUT: ' + output_line)
+                        logger.info(f'CLI OUTPUT: {output_line}')
                         output += output_line
                 break
 
@@ -219,7 +212,7 @@ def execute_command(project, command, timeout=None, process_name: str = None, fo
             if line:
                 output += line
                 print(green('CLI OUTPUT:') + line, end='')
-                logger.info('CLI OUTPUT: ' + line)
+                logger.info(f'CLI OUTPUT: {line}')
 
             # Read stderr
             try:
@@ -230,8 +223,8 @@ def execute_command(project, command, timeout=None, process_name: str = None, fo
             if stderr_line:
                 stderr_output += stderr_line
                 print(red('CLI ERROR:') + stderr_line, end='')  # Print with different color for distinction
-                logger.error('CLI ERROR: ' + stderr_line)
-                
+                logger.error(f'CLI ERROR: {stderr_line}')
+
             if process_name is not None:
                 logger.info(f'Process {process_name} running as pid: {process.pid}')
                 break
@@ -258,7 +251,11 @@ def execute_command(project, command, timeout=None, process_name: str = None, fo
     if return_value is None:
         return_value = ''
         if stderr_output != '':
-            return_value = 'stderr:\n```\n' + stderr_output[0:MAX_COMMAND_OUTPUT_LENGTH] + '\n```\n'
+            return_value = (
+                'stderr:\n```\n'
+                + stderr_output[:MAX_COMMAND_OUTPUT_LENGTH]
+                + '\n```\n'
+            )
         return_value += 'stdout:\n```\n' + output[-MAX_COMMAND_OUTPUT_LENGTH:] + '\n```'
 
     save_command_run(project, command, return_value)
@@ -289,7 +286,17 @@ def build_directory_tree(path, prefix="", ignore=None, is_last=False, files=None
 
     if os.path.isdir(path):
         # It's a directory, add its name to the output and then recurse into it
-        output += prefix + "|-- " + os.path.basename(path) + ((' - ' + files[os.path.basename(path)].description + ' ' if files and os.path.basename(path) in files and add_descriptions else '')) + "/\n"
+        output += (
+            f"{prefix}|-- {os.path.basename(path)}"
+            + (
+                f' - {files[os.path.basename(path)].description} '
+                if files
+                and os.path.basename(path) in files
+                and add_descriptions
+                else ''
+            )
+            + "/\n"
+        )
 
         # List items in the directory
         items = os.listdir(path)
@@ -299,7 +306,17 @@ def build_directory_tree(path, prefix="", ignore=None, is_last=False, files=None
 
     else:
         # It's a file, add its name to the output
-        output += prefix + "|-- " + os.path.basename(path) + ((' - ' + files[os.path.basename(path)].description + ' ' if files and os.path.basename(path) in files and add_descriptions else '')) + "\n"
+        output += (
+            f"{prefix}|-- {os.path.basename(path)}"
+            + (
+                f' - {files[os.path.basename(path)].description} '
+                if files
+                and os.path.basename(path) in files
+                and add_descriptions
+                else ''
+            )
+            + "\n"
+        )
 
     return output
 
@@ -371,26 +388,25 @@ def run_command_until_success(convo, command,
                 })
             logger.debug(f'LLM response: {response}')
 
-    if response != 'DONE':
-        # 'NEEDS_DEBUGGING'
-        print(red(f'Got incorrect CLI response:'))
-        print(cli_response)
-        print(red('-------------------'))
-
-        reset_branch_id = convo.save_branch()
-        while True:
-            try:
-                # This catch is necessary to return the correct value (cli_response) to continue development function so
-                # the developer can debug the appropriate issue
-                # this snippet represents the first entry point into debugging recursion because of return_cli_response
-                return convo.agent.debugger.debug(convo, {'command': command, 'timeout': timeout})
-            except TooDeepRecursionError as e:
-                # this is only to put appropriate message in the response after TooDeepRecursionError is raised
-                raise TooDeepRecursionError(cli_response) if return_cli_response else e
-            except TokenLimitError as e:
-                if is_root_task:
-                    convo.load_branch(reset_branch_id)
-                else:
-                    raise e
-    else:
+    if response == 'DONE':
         return { 'success': True, 'cli_response': cli_response }
+        # 'NEEDS_DEBUGGING'
+    print(red('Got incorrect CLI response:'))
+    print(cli_response)
+    print(red('-------------------'))
+
+    reset_branch_id = convo.save_branch()
+    while True:
+        try:
+            # This catch is necessary to return the correct value (cli_response) to continue development function so
+            # the developer can debug the appropriate issue
+            # this snippet represents the first entry point into debugging recursion because of return_cli_response
+            return convo.agent.debugger.debug(convo, {'command': command, 'timeout': timeout})
+        except TooDeepRecursionError as e:
+            # this is only to put appropriate message in the response after TooDeepRecursionError is raised
+            raise TooDeepRecursionError(cli_response) if return_cli_response else e
+        except TokenLimitError as e:
+            if is_root_task:
+                convo.load_branch(reset_branch_id)
+            else:
+                raise e

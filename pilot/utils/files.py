@@ -18,15 +18,12 @@ def setup_workspace(args) -> str:
     Also creates a 'tests' folder inside the workspace.
     :param args: may contain 'workspace' or 'root' keys
     """
-    # `args['workspace']` can be used to work with an existing workspace at the specified path.
-    # `args['root']` is used by VS Code for (nearly) the same purpose, but `args['name']` is appended to it.
-    workspace = args.get('workspace')
-    if workspace:
+    if workspace := args.get('workspace'):
         try:
             save_user_app(args['user_id'], args['app_id'], workspace)
             return workspace
         except Exception as e:
-            print(str(e))
+            print(e)
 
         return args['workspace']
 

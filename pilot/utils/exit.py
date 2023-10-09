@@ -48,8 +48,6 @@ def exit_gpt_pilot(ask_feedback=True):
     path_id = get_path_id()
     send_telemetry(path_id)
 
-    feedback = None
-    if ask_feedback:
-        feedback = get_user_feedback()
+    feedback = get_user_feedback() if ask_feedback else None
     if feedback:  # only send if user provided feedback
         send_feedback(feedback, path_id)

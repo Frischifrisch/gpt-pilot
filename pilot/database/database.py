@@ -59,7 +59,11 @@ def get_created_apps_with_steps():
     apps = get_created_apps()
     for app in apps:
         app['id'] = str(app['id'])
-        app['steps'] = [step for step in STEPS[:STEPS.index(app['status']) + 1]] if app['status'] is not None else []
+        app['steps'] = (
+            list(STEPS[: STEPS.index(app['status']) + 1])
+            if app['status'] is not None
+            else []
+        )
         app['development_steps'] = get_all_app_development_steps(app['id'])
         # TODO this is a quick way to remove the unnecessary fields from the response
         app['development_steps'] = [{k: v for k, v in dev_step.items() if k in {'id', 'created_at'}} for dev_step in
@@ -73,12 +77,10 @@ def get_all_app_development_steps(app_id):
 
 def save_user(user_id, email, password):
     try:
-        user = User.get(User.id == user_id)
-        return user
+        return User.get(User.id == user_id)
     except DoesNotExist:
         try:
-            existing_user = User.get(User.email == email)
-            return existing_user
+            return User.get(User.email == email)
         except DoesNotExist:
             return User.create(id=user_id, email=email, password=password)
 
@@ -104,8 +106,7 @@ def get_user(user_id=None, email=None):
         query.append(User.email == email)
 
     try:
-        user = User.get(reduce(operator.or_, query))
-        return user
+        return User.get(reduce(operator.or_, query))
     except DoesNotExist:
         raise ValueError("No user found with provided id or email")
 
@@ -190,8 +191,7 @@ def save_progress(app_id, step, data):
 
 def get_app(app_id):
     try:
-        app = App.get(App.id == app_id)
-        return app
+        return App.get(App.id == app_id)
     except DoesNotExist:
         raise ValueError(f"No app with id: {app_id}")
 
@@ -298,9 +298,12 @@ def save_development_step(project, prompt_path, prompt_data, messages, llm_respo
 
 
 def get_saved_development_step(project):
-    development_step = get_db_model_from_hash_id(DevelopmentSteps, project.args['app_id'],
-                                                 project.checkpoints['last_development_step'], project.current_step)
-    return development_step
+    return get_db_model_from_hash_id(
+        DevelopmentSteps,
+        project.args['app_id'],
+        project.checkpoints['last_development_step'],
+        project.current_step,
+    )
 
 
 def save_command_run(project, command, cli_response):
@@ -328,9 +331,12 @@ def get_saved_command_run(project, command):
         'command': command,
         'command_runs_count': project.command_runs_count
     }
-    command_run = get_db_model_from_hash_id(CommandRuns, project.args['app_id'],
-                                            project.checkpoints['last_command_run'], project.current_step)
-    return command_run
+    return get_db_model_from_hash_id(
+        CommandRuns,
+        project.args['app_id'],
+        project.checkpoints['last_command_run'],
+        project.current_step,
+    )
 
 
 def save_user_input(project, query, user_input):
@@ -356,9 +362,12 @@ def get_saved_user_input(project, query):
         'query': query,
         'user_inputs_count': project.user_inputs_count
     }
-    user_input = get_db_model_from_hash_id(UserInputs, project.args['app_id'], project.checkpoints['last_user_input'],
-                                           project.current_step)
-    return user_input
+    return get_db_model_from_hash_id(
+        UserInputs,
+        project.args['app_id'],
+        project.checkpoints['last_user_input'],
+        project.current_step,
+    )
 
 
 def delete_all_subsequent_steps(project):
@@ -467,8 +476,6 @@ def create_database():
 
         cursor.close()
         conn.close()
-    else:
-        pass
 
 
 def tables_exist():
@@ -478,8 +485,6 @@ def tables_exist():
                 database.get_tables().index(table._meta.table_name)
             except ValueError:
                 return False
-    else:
-        pass
     return True
 
 
